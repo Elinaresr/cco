@@ -1,0 +1,11 @@
+{
+  "business_area": "myarea",
+  "business_domain": "mydomain",
+  "cost": "mycostunit",
+  "environment": "dev",
+  "name_app": "myappname",
+  "name_app_camelcase": "AppName",
+  "name_service": "myservicename",
+  "organizational_units": "myorgunit",
+  "service_domain": "myservicedomain"
+}
