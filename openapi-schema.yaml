@@ -1,0 +1,562 @@
+openapi: 3.0.1
+info:
+  title: Agentic Commerce API
+  description: |
+    API completa de E-commerce con agente conversacional, carrito de compras, checkout y procesamiento de pagos.
+    
+    ## Funcionalidades
+    - 🔍 Búsqueda inteligente de productos
+    - 🛒 Carrito de compras persistente 
+    - 💳 Checkout y procesamiento de pagos
+    - 🤖 Agente conversacional con NLP
+    
+    ## Autenticación
+    Requiere API Key en header `x-api-key` para endpoints protegidos.
+    
+  version: 1.0.0
+  contact:
+    name: Agentic Commerce Team
+    email: support@agentic-commerce.com
+  
+servers:
+  - url: https://s7dyuk65tl.execute-api.us-east-1.amazonaws.com/qa
+    description: QA Environment
+    
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /chat:
+    post:
+      operationId: processEcommerceMessage
+      summary: Procesar mensaje del agente E-commerce
+      description: |
+        Endpoint principal del agente conversacional. Maneja:
+        - Búsqueda de productos ("busco sony audifonos")  
+        - Gestión de carrito ("agregar prod_001", "ver carrito")
+        - Checkout y pagos ("checkout", "pagar")
+        - Consultas generales ("hola", "ayuda")
+        
+      tags:
+        - E-commerce Agent
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              productSearch:
+                summary: Búsqueda de productos
+                value:
+                  userId: "user123" 
+                  message: "busco sony wh-1000xm5"
+              addToCart:
+                summary: Agregar al carrito
+                value:
+                  userId: "user123"
+                  message: "agregar prod_001"
+              viewCart:
+                summary: Ver carrito
+                value:
+                  userId: "user123"
+                  message: "ver carrito"
+              checkout:
+                summary: Checkout
+                value:
+                  userId: "user123"
+                  message: "checkout"
+      responses:
+        '200':
+          description: Respuesta exitosa del agente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                productFound:
+                  summary: Producto encontrado
+                  value:
+                    success: true
+                    response:
+                      message: "✨ Encontré: Sony WH-1000XM5 Audífonos Bluetooth Noise Cancelling\n💰 Precio: 1,499,000 COP\n🏪 Vendedor: AudioMax Colombia"
+                      data:
+                        featuredProduct:
+                          id: "prod_001"
+                          name: "Sony WH-1000XM5 Audífonos Bluetooth Noise Cancelling"
+                          price: 1499000
+                          currency: "COP"
+                        productId: "prod_001"
+                      suggestedActions: ["agregar prod_001", "ver más detalles"]
+                    metadata:
+                      intent: "search"
+                      executionTimeMs: 145
+                cartStatus:
+                  summary: Estado del carrito
+                  value:
+                    success: true
+                    response:
+                      message: "🛒 Carrito: 1 artículos - Total: 1,499,000 COP"
+                      data:
+                        totalItems: 1
+                        totalPrice: 1499000
+                        currency: "COP"
+                        items:
+                          - productId: "prod_001"
+                            productName: "Sony WH-1000XM5"
+                            quantity: 1
+                            price: 1499000
+                      suggestedActions: ["checkout", "continuar comprando"]
+                    metadata:
+                      intent: "view_cart"
+                      executionTimeMs: 67
+                successfulPurchase:
+                  summary: Compra exitosa
+                  value:
+                    success: true
+                    response:
+                      message: "🎉 ¡Compra exitosa!\n📋 Orden: ORD-1723567890-USER\n💳 Pago: PAY-1723567891-A1B2C3"
+                      data:
+                        success: true
+                        order:
+                          orderId: "ORD-1723567890-USER"
+                          totalPrice: 1499000
+                          status: "confirmed"
+                          estimatedDelivery: "2026-08-16"
+                        payment:
+                          paymentId: "PAY-1723567891-A1B2C3"
+                          status: "approved"
+                          authCode: "ABC123XYZ"
+                      suggestedActions: ["ver mis órdenes", "seguir compra"]
+                    metadata:
+                      intent: "checkout"
+                      executionTimeMs: 1234
+        '400':
+          description: Solicitud inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: "MISSING_FIELDS"
+                  message: "userId and message required"
+        '403':
+          description: API Key faltante o inválido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Forbidden"
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Endpoint para verificar el estado del servicio
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Servicio funcionando correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+  
+  /products/search:
+    post:
+      operationId: searchProducts
+      summary: Búsqueda avanzada de productos
+      description: Búsqueda estructurada con filtros específicos
+      tags:
+        - Products
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["query"]
+              properties:
+                query:
+                  type: string
+                  description: Término de búsqueda
+                  example: "sony audifonos"
+                limit:
+                  type: integer
+                  description: Número máximo de resultados
+                  default: 10
+                  minimum: 1
+                  maximum: 50
+                category:
+                  type: string
+                  description: Filtro por categoría
+                  enum: ["electronics", "clothing", "home", "books"]
+                brand:
+                  type: string
+                  description: Filtro por marca
+                  example: "Sony"
+      responses:
+        '200':
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+                      totalFound:
+                        type: integer
+                      query:
+                        type: string
+
+  /merchant/products:
+    get:
+      operationId: getMerchantProducts
+      summary: Obtener catálogo de productos
+      description: Endpoint interno para acceder al catálogo completo de productos
+      tags:
+        - Merchant
+      security: []
+      parameters:
+        - name: query
+          in: query
+          description: Filtro de búsqueda
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Límite de resultados
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          description: Filtro por categoría
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      summary: Enviar feedback
+      description: Permite a los usuarios enviar comentarios y valoraciones
+      tags:
+        - Feedback
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["userId", "feedback"]
+              properties:
+                userId:
+                  type: string
+                  description: ID del usuario
+                feedback:
+                  type: string
+                  description: Comentarios del usuario
+                rating:
+                  type: integer
+                  description: Valoración del 1 al 5
+                  minimum: 1
+                  maximum: 5
+                orderId:
+                  type: string
+                  description: ID de orden relacionado (opcional)
+      responses:
+        '200':
+          description: Feedback recibido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Feedback recibido exitosamente"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: API Key requerido para endpoints protegidos
+
+  schemas:
+    ChatRequest:
+      type: object
+      required: ["userId", "message"]
+      properties:
+        userId:
+          type: string
+          description: Identificador único del usuario
+          example: "user123"
+        message:
+          type: string
+          description: Mensaje o comando del usuario
+          example: "busco sony audifonos"
+        sessionId:
+          type: string
+          description: ID de sesión opcional para mantener contexto
+          example: "session-abc123"
+
+    ChatResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indica si la operación fue exitosa
+        response:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Respuesta en lenguaje natural para el usuario
+            data:
+              type: object
+              description: Datos estructurados según el tipo de operación
+            suggestedActions:
+              type: array
+              items:
+                type: string
+              description: Acciones sugeridas para el usuario
+            conversationId:
+              type: string
+              description: ID único de la conversación
+            sessionId:
+              type: string
+              description: ID de la sesión actual
+        metadata:
+          type: object
+          properties:
+            executionTimeMs:
+              type: integer
+              description: Tiempo de ejecución en milisegundos
+            agentsInvoked:
+              type: array
+              items:
+                type: string
+              description: Lista de agentes internos utilizados
+            intent:
+              type: string
+              description: Intención detectada del usuario
+              enum: ["search", "add_to_cart", "view_cart", "checkout", "general"]
+            timestamp:
+              type: string
+              format: date-time
+              description: Timestamp de la respuesta
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID único del producto
+          example: "prod_001"
+        name:
+          type: string
+          description: Nombre del producto
+          example: "Sony WH-1000XM5 Audífonos Bluetooth"
+        description:
+          type: string
+          description: Descripción detallada del producto
+        price:
+          type: number
+          description: Precio del producto
+          example: 1499000
+        currency:
+          type: string
+          description: Moneda del precio
+          example: "COP"
+        category:
+          type: string
+          description: Categoría del producto
+          example: "electronics"
+        subcategory:
+          type: string
+          description: Subcategoría del producto  
+          example: "audio"
+        brand:
+          type: string
+          description: Marca del producto
+          example: "Sony"
+        merchant:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            rating:
+              type: number
+              format: float
+        availability:
+          type: object
+          properties:
+            inStock:
+              type: boolean
+            quantity:
+              type: integer
+            deliveryDays:
+              type: integer
+
+    CartItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        quantity:
+          type: integer
+        merchant:
+          type: string
+        deliveryDays:
+          type: integer
+
+    Order:
+      type: object
+      properties:
+        orderId:
+          type: string
+          example: "ORD-1723567890-USER"
+        userId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        totalPrice:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"]
+        estimatedDelivery:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        shippingAddress:
+          type: object
+        paymentMethod:
+          type: object
+
+    Payment:
+      type: object
+      properties:
+        success:
+          type: boolean
+        paymentId:
+          type: string
+        transactionId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: ["pending", "approved", "declined", "failed"]
+        authCode:
+          type: string
+        processedAt:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "INVALID_REQUEST"
+            message:
+              type: string
+              example: "Invalid request parameters"
+        response:
+          type: object
+          properties:
+            message:
+              type: string
+            suggestedActions:
+              type: array
+              items:
+                type: string
+
+tags:
+  - name: E-commerce Agent
+    description: Agente conversacional principal para e-commerce
+  - name: Products  
+    description: Gestión y búsqueda de productos
+  - name: Merchant
+    description: Endpoints del catálogo interno
+  - name: Feedback
+    description: Sistema de retroalimentación
+  - name: Health
+    description: Monitoreo y estado del servicio
