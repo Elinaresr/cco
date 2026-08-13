@@ -1,0 +1,9 @@
+{
+  "url": "https://s7dyuk65tl.execute-api.us-east-1.amazonaws.com/qa/chat",
+  "method": "POST",
+  "authentication": "API Key",
+  "header_name": "x-api-key", 
+  "api_key": "7V7Avzr6JO7QWCXyYnSJDaIS4F84AzgjtofzK832",
+  "content_type": "application/json",
+  "status": "🟢 READY FOR CHATGPT"
+}
